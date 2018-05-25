@@ -4,7 +4,7 @@ import tensorflow as tf
 import numpy as np
 
 from gpflow import settings
-from gpflow import densities
+from gpflow import logdensities as densities
 from gpflow import transforms
 
 from gpflow.decors import params_as_tensors
@@ -13,7 +13,7 @@ from gpflow.decors import autoflow
 from gpflow.params import Parameter
 from gpflow.params import Parameterized
 from gpflow.params import ParamList
-from gpflow.quadrature import hermgauss
+from gpflow.quadrature import hermgauss, ndiagquad
 from gpflow.likelihoods import Likelihood
 from .latent import Latent
 
@@ -56,21 +56,21 @@ class HeteroscedasticLikelihood(Likelihood):
         return self.hetero_noise(X) 
         
     @params_as_tensors
-    def logp(self, F, Y, hetero_variance, *args):
+    def logp(self, F, Y, hetero_variance=None, **args):
         """The log-likelihood function."""
         raise NotImplemented("sub class must...")
 
     @params_as_tensors
-    def conditional_mean(self, F, hetero_variance, *args):  # pylint: disable=R0201
+    def conditional_mean(self, F, hetero_variance=None, **args):  # pylint: disable=R0201
         """The mean of the likelihood conditioned on latent."""
         raise NotImplemented("sub class must...")
 
     @params_as_tensors
-    def conditional_variance(self, F, hetero_variance, *args): # pylint: disable=R0201
+    def conditional_variance(self, F, hetero_variance=None, **args): # pylint: disable=R0201
         """The var of the likelihood conditioned on latent."""
         raise NotImplemented("sub class must...")
 
-    def predict_mean_and_var(self, Fmu, Fvar, hetero_variance, *args):
+    def predict_mean_and_var(self, Fmu, Fvar, hetero_variance=None, **args):
         """
         Given a Normal distribution for the latent function,
         return the mean of Y
@@ -85,6 +85,14 @@ class HeteroscedasticLikelihood(Likelihood):
         Here, we implement a default Gauss-Hermite quadrature routine, but some
         likelihoods (e.g. Gaussian) will implement specific cases.
         """
+        integrand2 = lambda *X, **Ys: self.conditional_variance(*X, **Ys) \
+            + tf.square(self.conditional_mean(*X, **Ys))
+        E_y, E_y2 = ndiagquad([self.conditional_mean, integrand2],
+                self.num_gauss_hermite_points,
+                Fmu, Fvar, hetero_variance=hetero_variance, **args)
+        V_y = E_y2 - tf.square(E_y)
+        return E_y, V_y
+
         gh_x, gh_w = hermgauss(self.num_gauss_hermite_points)
         gh_w /= np.sqrt(np.pi)
         gh_w = gh_w.reshape(-1, 1)
@@ -106,7 +114,7 @@ class HeteroscedasticLikelihood(Likelihood):
 
         return E_y, V_y
     
-    def predict_density(self, Fmu, Fvar, Y, hetero_variance, *args):
+    def predict_density(self, Fmu, Fvar, Y, hetero_variance=None, **args):
         """
         Given a Normal distribution for the latent function, and a datum Y,
         compute the (log) predictive density of Y.
@@ -119,6 +127,11 @@ class HeteroscedasticLikelihood(Likelihood):
         Here, we implement a default Gauss-Hermite quadrature routine, but some
         likelihoods (Gaussian, Poisson) will implement specific cases.
         """
+        exp_p = ndiagquad(lambda X, Y, **Ys: tf.exp(self.logp(X, Y,**Ys)),
+                self.num_gauss_hermite_points,
+                Fmu, Fvar, Y=Y, hetero_variance=hetero_variance, **args)
+        return tf.log(exp_p)
+
         gh_x, gh_w = hermgauss(self.num_gauss_hermite_points)
 
         gh_w = gh_w.reshape(-1, 1) / np.sqrt(np.pi)
@@ -133,7 +146,7 @@ class HeteroscedasticLikelihood(Likelihood):
         return tf.reshape(tf.log(tf.matmul(tf.exp(logp), gh_w)), shape)
 
     @params_as_tensors
-    def variational_expectations(self, Fmu, Fvar, Y, hetero_variance, *args):
+    def variational_expectations(self, Fmu, Fvar, Y, hetero_variance=None, **args):
         """
         Compute the expected log density of the data, given a Gaussian
         distribution for the function values.
@@ -146,6 +159,9 @@ class HeteroscedasticLikelihood(Likelihood):
         Here, we implement a default Gauss-Hermite quadrature routine, but some
         likelihoods (Gaussian, Poisson) will implement specific cases.
         """
+        return ndiagquad(self.logp,
+                self.num_gauss_hermite_points,
+                Fmu, Fvar, Y=Y, hetero_variance=hetero_variance, **args)
         gh_x, gh_w = hermgauss(self.num_gauss_hermite_points)
         gh_x = gh_x.reshape(1, -1)
         gh_w = gh_w.reshape(-1, 1) / np.sqrt(np.pi)
@@ -162,15 +178,15 @@ class HeteroscedasticGaussian(HeteroscedasticLikelihood):
         super().__init__(log_noise_latent, name=name)
         
     @params_as_tensors
-    def logp(self, F, Y, hetero_variance,*unused_args):
+    def logp(self, F, Y, hetero_variance=None,**unused_args):
         """The log-likelihood function."""
         return densities.gaussian(F, Y, hetero_variance)
 
     @params_as_tensors
-    def conditional_mean(self, F, unused_hetero_variance, *unused_args):  # pylint: disable=R0201
+    def conditional_mean(self, F, unused_hetero_variance=None, **unused_args):  # pylint: disable=R0201
         """The mean of the likelihood conditioned on latent."""
         return F
 
     @params_as_tensors
-    def conditional_variance(self, F, hetero_variance, *unused_args):
+    def conditional_variance(self, F, hetero_variance=None, **unused_args):
         return hetero_variance

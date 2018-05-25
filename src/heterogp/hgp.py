@@ -1,5 +1,6 @@
 import tensorflow as tf
-from gpflow import settings,  densities, transforms, kullback_leiblers, features, conditionals
+from gpflow import settings,   transforms, kullback_leiblers, features, conditionals
+from gpflow import logdensities as densities
 from gpflow.core.compilable import Build
 from gpflow.params import Parameterized, ParamList, DataHolder, Parameter, Minibatch, DataHolder
 from gpflow.decors import autoflow,params_as_tensors, params_as_tensors_for
@@ -60,7 +61,7 @@ class HGP(Model):
         X = tf.tile(X[None,:,:],[self.num_samples,1,1])
         Fmean, Fvar = self._build_predict(X, full_cov=False, S=None)
         hetero_variance = tf.square(self.likelihood.hetero_noise(X))
-        var_exp = self.likelihood.variational_expectations(Fmean, Fvar, Y, hetero_variance)  # S, N, D
+        var_exp = self.likelihood.variational_expectations(Fmean, Fvar, Y, hetero_variance=hetero_variance)  # S, N, D
         return tf.reduce_mean(var_exp, 0)  # N, D
 
     @params_as_tensors
@@ -100,13 +101,13 @@ class HGP(Model):
         Xnew = tf.tile(Xnew[None,:,:],[num_samples,1,1])
         Fmean, Fvar = self._build_predict(Xnew, full_cov=False, S=None)
         hetero_variance = tf.square(self.likelihood.hetero_noise(Xnew))
-        return self.likelihood.predict_mean_and_var(Fmean, Fvar, hetero_variance)
+        return self.likelihood.predict_mean_and_var(Fmean, Fvar, hetero_variance=hetero_variance)
 
     @autoflow((float_type, [None, None]), (float_type, [None, None]), (tf.int32, []))
     def predict_density(self, Xnew, Ynew, num_samples):
         Xnew = tf.tile(Xnew[None,:,:],[num_samples,1,1])
         Fmean, Fvar = self._build_predict(Xnew, full_cov=False, S=None)
         hetero_variance = tf.square(self.likelihood.hetero_variance(Xnew))
-        l = self.likelihood.predict_density(Fmean, Fvar, Ynew, hetero_variance)
+        l = self.likelihood.predict_density(Fmean, Fvar, Ynew, hetero_variance=hetero_variance)
         log_num_samples = tf.log(tf.cast(num_samples, float_type))
         return tf.reduce_logsumexp(l - log_num_samples, axis=0)

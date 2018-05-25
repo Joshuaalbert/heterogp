@@ -1,7 +1,8 @@
 import numpy as np
 import tensorflow as tf
 
-from gpflow import settings,  densities, transforms, kullback_leiblers, features, conditionals
+from gpflow import settings,  transforms, kullback_leiblers, features, conditionals
+from gpflow import logdensities as densities
 from gpflow.core.compilable import Build
 from gpflow.params import Parameterized, ParamList, DataHolder, Parameter, Minibatch, DataHolder
 from gpflow.decors import autoflow,params_as_tensors, params_as_tensors_for

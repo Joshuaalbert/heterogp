@@ -164,7 +164,7 @@ with tf.Session(graph=tf.Graph()) as sess:
         model.compile()
     from timeit import default_timer
     t0 = default_timer()
-    run_with_adam(model,1e-3,iterations)
+    run_with_adam(model,1e-3,iterations,PrintAction(model,"Adam"))
     print(default_timer() - t0)
     # Predictions uses stochastic sampling and produces 
     # [num_samples,N,D] shape output
