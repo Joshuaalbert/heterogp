@@ -48,12 +48,12 @@ def run_with_adam(model, lr,iterations, callback=None):
 
 # # Define some data with input-dependent noise
 
-# In[ ]:
+# In[3]:
 
 def func(X):
     return np.cos(5*X)*np.exp(-X/2)
 
-N = 1000000
+N = 1000
 X = np.linspace(-2,2,N)[:,None]
 noise = 4*np.abs(0.25*(np.cos(6*X)+1)*np.exp(-X) + 0.1)
 Y = func(X) + noise*np.random.normal(size=X.shape)
@@ -130,7 +130,7 @@ plt.show()
 #   underlying function
 #   - Finally, train with Adam and plot the results
 
-# In[ ]:
+# In[6]:
 
 from heterogp.likelihoods import HeteroscedasticGaussian
 from heterogp.hgp import HGP
@@ -173,7 +173,7 @@ with tf.Session(graph=tf.Graph()) as sess:
     hetero_noise = model.likelihood.compute_hetero_noise(X,100)
 
 
-# In[ ]:
+# In[7]:
 
 plt.figure(figsize=(4,4))
 plt.plot(X[:,0],hetero_noise[:,:,0].T,alpha=0.05,c='b')
