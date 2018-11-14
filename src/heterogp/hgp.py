@@ -25,10 +25,7 @@ from gpflow import autoflow
 float_type = settings.float_type
 
 class HGP(Model):
-    """
-    The base class for Deep Gaussian process models.
-    Implements a Monte-Carlo variational bound and convenience functions.
-    """
+
     def __init__(self, X, Y, Z, kern, likelihood, 
                  mean_function=Zero, 
                  minibatch_size=None,

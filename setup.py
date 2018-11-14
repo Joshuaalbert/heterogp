@@ -10,7 +10,7 @@ setup_requires = ['numpy>=' + __minimum_numpy_version__,
 'tensorflow>='+__minimum_tensorflow_version__]
 
 setup(name='heterogp',
-      version='0.0.1',
+      version='0.0.2',
       description='heteroscedastic error SVGP',
       author=['Josh Albert'],
       author_email=['albert@strw.leidenuniv.nl'],
