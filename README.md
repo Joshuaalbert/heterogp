@@ -8,3 +8,7 @@ It is actually sitting in a nearly rewritten state on my laptop, and it needs to
 ## Promises
 I will release a type-set document that describes how heteroscedasticity is handled here.
 I will provide a heteroscedastic version of GPR, and SGPR.
+
+## Update
+
+This project is no longer in development. Gpflow now has support for heteroscedastic errors built in. I'll leave this repo for posterity.
